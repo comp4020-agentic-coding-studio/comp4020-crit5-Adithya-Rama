@@ -3,35 +3,71 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>COMP4020 prototype</title>
+    <title>HANDSHIFT -- Palm-powered highway riding</title>
     <meta
       name="description"
-      content="Replace this with one sentence saying what this page is. A search result and a link preview both show it."
+      content="HANDSHIFT is a cinematic palm-powered motorcycle run through a changing neon highway."
     />
-
-    <!--
-      The link-preview card: public/card.png, 1200x630 --- replace it. The URL
-      resolves against this page, like any link. No og:title/og:description:
-      scrapers fall back to the <title> and description above.
-    -->
+    <meta name="theme-color" content="#071229" />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="./card.png" />
     <meta name="twitter:card" content="summary_large_image" />
-
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <header>
-      <nav aria-label="Primary">
-        <a href="./">Home</a>
+    <main id="game" data-game-state="playing">
+      <div class="skyline" aria-hidden="true"></div>
+      <canvas id="road" aria-hidden="true"></canvas>
+      <div class="vignette" aria-hidden="true"></div>
+
+      <nav class="topbar" aria-label="Game controls">
+        <h1>HAND<span>SHIFT</span></h1>
+        <div class="icon-controls">
+          <button id="camera" class="icon-button camera-button" aria-label="Enable palm tracking">
+            <span class="camera-radar" aria-hidden="true"></span>
+            <svg viewBox="0 0 32 32" aria-hidden="true">
+              <path d="M8 14v-2a2 2 0 0 1 4 0v-2a2 2 0 0 1 4 0V8a2 2 0 0 1 4 0v3a2 2 0 0 1 4 0v7c0 6-3 10-9 10-4 0-7-2-9-6l-2-5a2 2 0 0 1 4-1l1 2v-4Z" />
+            </svg>
+          </button>
+          <button id="audio" class="icon-button" aria-label="Toggle sound">
+            <svg class="sound-on" viewBox="0 0 32 32" aria-hidden="true">
+              <path d="M5 13h6l7-6v18l-7-6H5v-6Zm17-1c2 2 2 6 0 8m3-11c4 4 4 10 0 14" />
+            </svg>
+          </button>
+        </div>
       </nav>
-    </header>
-    <main>
-      <h1>COMP4020 prototype</h1>
-      <p>
-        Replace this with your prototype. This week's brief is on the course website;
-        <code>spec/README.md</code> explains how the checks in this repo relate to it.
-      </p>
+
+      <section class="hud" aria-label="Run status">
+        <div class="score">
+          <span>SCORE</span>
+          <strong id="score">000000</strong>
+        </div>
+        <div class="time">
+          <span>RUN</span>
+          <strong id="time">2:30</strong>
+        </div>
+        <div class="multiplier" id="multiplier">×1.0</div>
+      </section>
+
+      <div class="opening-signal" aria-hidden="true">
+        <span class="steer-line"></span>
+        <svg viewBox="0 0 64 64">
+          <path d="M17 27v-7a4 4 0 0 1 8 0v-5a4 4 0 0 1 8 0v-3a4 4 0 0 1 8 0v7a4 4 0 0 1 8 0v14c0 12-6 20-18 20-8 0-13-4-17-12L9 31a4 4 0 0 1 8-4Z" />
+        </svg>
+      </div>
+
+      <canvas id="hand-trace" width="220" height="150" aria-hidden="true"></canvas>
+      <output id="reward" class="reward" aria-live="polite"></output>
+
+      <section id="end-panel" class="end-panel" hidden aria-live="polite">
+        <span id="ending">CRASHED</span>
+        <strong id="final-score">000000</strong>
+        <button id="restart" class="restart" aria-label="Restart run">
+          <svg viewBox="0 0 32 32" aria-hidden="true">
+            <path d="M25 11V5l-3 3a11 11 0 1 0 3 15M22 8h-6" />
+          </svg>
+        </button>
+      </section>
     </main>
     <script type="module" src="./main.ts"></script>
   </body>

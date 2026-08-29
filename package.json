@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint --deny-warnings . && stylelint \"styles.css\"",
+    "lint": "oxlint --deny-warnings --ignore-pattern \"public/mediapipe/**\" . && stylelint \"styles.css\"",
     "check": "pnpm lint && pnpm typecheck && pnpm build && vitest run",
     "check:evidence": "node scripts/check-evidence.ts",
     "test": "vitest run"

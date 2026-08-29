@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { JSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
+import { crashRun, initialRun } from "../game/rules.ts";
 
 // Crit 5, "A game" --- contract tests for this week's published spec
 // (https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/crits/05-game/).
@@ -43,9 +44,7 @@ describe("crit 5: the game can be lost", () => {
     expect(root?.getAttribute("data-game-state")).toBe("playing");
   });
 
-  // TODO once the mechanic is picked: drive an actual loss/win/finish through
-  // the built game (dispatch the real input --- key, click, whatever the
-  // mechanic uses) and assert data-game-state lands on a terminal value. A
-  // static read of index.html can't exercise play; this needs the running
-  // module.
+  it("makes a traffic collision terminal", () => {
+    expect(crashRun(initialRun()).state).toBe("crashed");
+  });
 });
