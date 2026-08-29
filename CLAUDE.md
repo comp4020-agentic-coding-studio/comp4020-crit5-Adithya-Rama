@@ -33,6 +33,63 @@ instructions, a queryable game-over state). The rest --- five-minute pickup,
 the playtesting-derived change, how you directed the work --- is judged at the
 crit, not by a test.
 
+## Product charter --- HANDSHIFT
+
+HANDSHIFT is a premium-feeling browser arcade ride built around one physical
+idea: the player's palm becomes the motorcycle's handlebar. Palm roll maps to
+continuous lateral steering; close non-colliding passes build score and
+multiplier; a collision ends the run; surviving 150 seconds reaches a finish.
+
+The opening is already live. A motorcycle idles on a sparse sunset highway, a
+camera/palm glyph invites interaction, and the bike mirrors the first useful
+steering signal before traffic becomes dangerous. Do not explain this with
+words. The title, score, multiplier, time, reward words, and icon-only
+camera/audio/restart controls are allowed; how-to copy is not.
+
+### Runtime and architecture
+
+- Keep Vite + strict TypeScript and deploy as static GitHub Pages output.
+- Use Three.js for a procedural low/mid-poly road, bike, traffic and effects.
+- Lazy-load MediaPipe Hand Landmarker only after camera activation. Its WASM
+  and model are local assets, not CDN URLs.
+- Normalise camera, pointer/touch and keyboard into the same timestamped
+  steering sample. The most recent valid source wins; camera loss recentres
+  smoothly without disabling fallbacks.
+- Keep rules pure: seeded traffic, collision, near-miss classification,
+  multiplier and the 150-second finish must not depend on Three.js.
+- Treat `playing`, `crashed` and `finished` as the public run-state contract
+  and mirror it on the game root through `data-game-state`.
+- Synthesize sound with Web Audio after a user gesture. Do not add downloaded
+  audio or autoplay assumptions.
+
+### Visual and performance budget
+
+- Art direction: cinematic dusk-to-night expressway, reflective asphalt,
+  emissive traffic lights, restrained bloom/fog, low chase camera, bike lean,
+  sparks and speed streaks.
+- Generated skyline/card raster assets must be inspected, copied into
+  `public/`, optimised, and recorded with their final prompts. Simple particles
+  and icons stay code-native.
+- Cap device pixel ratio, pool road/traffic objects, sample hand tracking below
+  render frequency, and degrade expensive effects before frame rate falls
+  below 30 FPS.
+- Initial pointer/keyboard play must work before the camera module or model has
+  loaded, and a denied camera must never strand the player.
+
+### Acceptance gates
+
+1. Pure rule tests prove collision, one-shot near-miss scoring, steering
+   calibration/clamping and the timed finish.
+2. `pnpm check`, the Crit 5 spec and invariants pass against the built output.
+3. The running game is exercised at 1920x1080 and 390x844, including keyboard,
+   pointer/touch fallback, resize during play, crash, restart and finish.
+4. A real student playthrough produces one concrete correction. Record the
+   observation and resulting commit; never fabricate it.
+5. Draft `reflections/crit-5.md` only from verified events and require student
+   correction/approval before publication.
+6. Keep development pushes private. Publish and verify Pages only after all
+   gates above are green and the student approves the evidence.
+
 ## How to work in here
 
 - Keep the dev server running (`pnpm dev`) so you see changes as you make them.

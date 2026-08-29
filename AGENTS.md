@@ -57,6 +57,33 @@ Before any commit that claims a milestone, and always before invoking rule 10
   written; flag the conflict for the student rather than quietly deciding the
   spec meant something narrower.
 
+## 0.1 HANDSHIFT product contract
+
+The chosen response is **HANDSHIFT**, a camera-first 3D motorcycle game. Keep
+the response pointed and small even when polishing it:
+
+* one palm-roll mechanic controls continuous lateral steering;
+* pointer/touch and keyboard use the same steering signal and remain complete
+  fallbacks when camera permission, lighting or tracking fails;
+* a run ends in a crash or at the illuminated finish after 150 seconds;
+* the root exposes `data-game-state="playing|crashed|finished"` and keeps it in
+  sync with the real run state;
+* there is no instructional copy, tutorial screen, help dialog, or README
+  control guide --- affordance and feedback do the teaching;
+* Three.js, MediaPipe WASM/model files, generated artwork and other runtime
+  assets ship locally. Do not add a runtime CDN dependency;
+* game rules stay deterministic and separate from rendering so collision,
+  scoring and finishing can be tested without WebGL or a camera;
+* target 60 FPS on the desktop marking viewport and at least 30 FPS on the
+  phone viewport, with adaptive quality rather than broken play;
+* never report webcam quality, visual polish, audio feel or mobile play as
+  verified unless that exact check was performed on the running build.
+
+Reject an endless-only run, a camera-only build, or extra mechanics that put a
+spec line or the core steering feel at risk. The feature-complete build must
+pause for a real student playthrough; its observed correction and the student's
+approved reflection are pre-publication gates, not details to invent.
+
 ---
 
 # 1. Audit before implementation
