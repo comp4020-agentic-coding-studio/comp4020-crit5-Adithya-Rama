@@ -42,7 +42,7 @@ button {
   z-index: -2;
   background-image:
     linear-gradient(180deg, transparent 32%, rgba(7, 12, 29, 0.17) 58%, #070b15 100%),
-    url("./public/assets/skyline.png");
+    url("/assets/skyline.png");
   background-position: center 57%;
   background-size: cover;
   filter: saturate(0.82) brightness(0.72);
@@ -261,6 +261,7 @@ h1 span {
   transform: translate(-50%, 18px) scale(0.94);
 }
 
+#camera-preview,
 #hand-trace {
   position: absolute;
   z-index: 4;
@@ -271,6 +272,27 @@ h1 span {
   opacity: 0.46;
   transition: opacity 2s ease;
   pointer-events: none;
+}
+
+#camera-preview {
+  z-index: 3;
+  border: 1px solid rgba(90, 231, 255, 0.24);
+  border-radius: 12px;
+  object-fit: cover;
+  transform: scaleX(-1);
+  filter: saturate(0.65) contrast(1.08) brightness(0.62);
+}
+
+#hand-trace {
+  z-index: 4;
+}
+
+#game[data-camera-state="error"] #camera-preview {
+  opacity: 0;
+}
+
+.is-running #camera-preview {
+  opacity: 0.16;
 }
 
 .is-running #hand-trace {
@@ -406,6 +428,7 @@ h1 span {
     width: 66vw;
   }
 
+  #camera-preview,
   #hand-trace {
     right: 8px;
     bottom: 8px;

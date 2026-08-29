@@ -35,6 +35,14 @@ export class InputController {
       (this.keyboard.has("ArrowRight") || this.keyboard.has("KeyD") ? 1 : 0) -
       (this.keyboard.has("ArrowLeft") || this.keyboard.has("KeyA") ? 1 : 0);
 
+    if (
+      this.cameraSample &&
+      now - this.cameraSample.timestamp <= ACTIVE_CAMERA_MS &&
+      this.cameraSample.confidence >= 0.45
+    ) {
+      return this.cameraSample;
+    }
+
     if (keyboardValue !== 0) {
       return {
         value: keyboardValue,
@@ -42,14 +50,6 @@ export class InputController {
         timestamp: now,
         source: "keyboard",
       };
-    }
-
-    if (
-      this.cameraSample &&
-      now - this.cameraSample.timestamp <= ACTIVE_CAMERA_MS &&
-      this.cameraSample.confidence >= 0.45
-    ) {
-      return this.cameraSample;
     }
 
     return this.pointerSample;

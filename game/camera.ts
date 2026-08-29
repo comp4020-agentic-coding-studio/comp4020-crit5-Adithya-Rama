@@ -1,133 +1,174 @@
+import type {
+  HandLandmarker,
+  HandLandmarkerResult,
+  NormalizedLandmark,
+} from "@mediapipe/tasks-vision";
 import { median, normalisePalmRoll } from "./steering.ts";
 import type { SteeringSample } from "./types.ts";
 
-interface WorkerResult {
-  type: "result";
-  angle: number;
-  confidence: number;
-  landmarks: Array<{ x: number; y: number }>;
-}
-
-type WorkerMessage =
-  | { type: "ready" }
-  | { type: "error"; reason: string }
-  | WorkerResult;
+type CameraState = "loading" | "ready" | "error";
+type LandmarkPoint = { x: number; y: number };
 
 export class PalmCamera {
-  private worker: Worker | null = null;
+  private landmarker: HandLandmarker | null = null;
   private stream: MediaStream | null = null;
-  private video: HTMLVideoElement | null = null;
   private timer = 0;
-  private busy = false;
+  private starting = false;
   private neutralSamples: number[] = [];
   private neutral: number | null = null;
 
   constructor(
+    private readonly video: HTMLVideoElement,
     private readonly onSample: (
       sample: SteeringSample,
-      landmarks: WorkerResult["landmarks"],
+      landmarks: LandmarkPoint[],
     ) => void,
-    private readonly onState: (state: "loading" | "ready" | "error") => void,
+    private readonly onState: (state: CameraState, reason?: string) => void,
   ) {}
 
   async start(): Promise<void> {
-    if (this.stream) return;
+    if (this.stream || this.starting) return;
+    this.starting = true;
     this.onState("loading");
 
     try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("camera API unavailable");
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
         video: {
           facingMode: "user",
-          width: { ideal: 320 },
-          height: { ideal: 240 },
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          frameRate: { ideal: 30, max: 30 },
         },
       });
-      const video = document.createElement("video");
-      video.muted = true;
-      video.playsInline = true;
-      video.srcObject = stream;
-      await video.play();
-
-      const worker = new Worker(new URL("./hand-worker.ts", import.meta.url), {
-        type: "module",
-      });
-      worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
-        const message = event.data;
-        if (message.type === "ready") {
-          this.onState("ready");
-          this.timer = window.setInterval(() => {
-            void this.sendFrame();
-          }, 66);
-          return;
-        }
-        if (message.type === "error") {
-          this.onState("error");
-          return;
-        }
-        this.busy = false;
-        this.consume(message);
-      };
-      worker.onerror = () => {
-        this.busy = false;
-        this.onState("error");
-      };
 
       this.stream = stream;
-      this.video = video;
-      this.worker = worker;
-      worker.postMessage({
-        type: "init",
-        wasmRoot: new URL("./mediapipe/wasm", document.baseURI).href,
-        modelPath: new URL("./models/hand_landmarker.task", document.baseURI).href,
-      });
-    } catch {
-      this.onState("error");
+      this.video.srcObject = stream;
+      await this.video.play();
+
+      const { FilesetResolver, HandLandmarker } = await import(
+        "@mediapipe/tasks-vision"
+      );
+      const wasmRoot = new URL("./mediapipe/wasm", document.baseURI).href;
+      const modelAssetPath = new URL(
+        "./models/hand_landmarker.task",
+        document.baseURI,
+      ).href;
+      const vision = await FilesetResolver.forVisionTasks(wasmRoot);
+      const options = {
+        baseOptions: { modelAssetPath, delegate: "GPU" as const },
+        runningMode: "VIDEO" as const,
+        numHands: 1,
+        minHandDetectionConfidence: 0.5,
+        minHandPresenceConfidence: 0.45,
+        minTrackingConfidence: 0.45,
+      };
+
+      try {
+        this.landmarker = await HandLandmarker.createFromOptions(vision, options);
+      } catch {
+        this.landmarker = await HandLandmarker.createFromOptions(vision, {
+          ...options,
+          baseOptions: { modelAssetPath, delegate: "CPU" },
+        });
+      }
+
+      this.neutralSamples = [];
+      this.neutral = null;
+      this.onState("ready");
+      this.timer = window.setInterval(() => this.detectFrame(), 66);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "camera failed";
       this.stop();
+      this.onState("error", reason);
+    } finally {
+      this.starting = false;
     }
   }
 
   stop(): void {
     window.clearInterval(this.timer);
     this.timer = 0;
-    this.worker?.terminate();
-    this.worker = null;
+    this.landmarker?.close();
+    this.landmarker = null;
     this.stream?.getTracks().forEach((track) => track.stop());
     this.stream = null;
-    this.video = null;
-    this.busy = false;
+    this.video.pause();
+    this.video.srcObject = null;
+    this.neutralSamples = [];
+    this.neutral = null;
   }
 
-  private async sendFrame(): Promise<void> {
-    if (this.busy || !this.video || !this.worker || this.video.readyState < 2) return;
-    this.busy = true;
+  private detectFrame(): void {
+    if (
+      !this.landmarker ||
+      this.video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
+    ) {
+      return;
+    }
+
     try {
-      const bitmap = await createImageBitmap(this.video);
-      this.worker.postMessage({ type: "frame", bitmap }, [bitmap]);
-    } catch {
-      this.busy = false;
+      this.consume(this.landmarker.detectForVideo(this.video, performance.now()));
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "tracking failed";
+      this.stop();
+      this.onState("error", reason);
     }
   }
 
-  private consume(result: WorkerResult): void {
-    if (result.confidence < 0.45) return;
+  private consume(result: HandLandmarkerResult): void {
+    const landmarks = result.landmarks[0];
+    if (!landmarks) {
+      this.onSample(
+        {
+          value: 0,
+          confidence: 0,
+          timestamp: performance.now(),
+          source: "camera",
+        },
+        [],
+      );
+      return;
+    }
 
+    const confidence = result.handedness[0]?.[0]?.score ?? 1;
+    if (confidence < 0.45) return;
+
+    const angle = palmRoll(landmarks);
     if (this.neutral === null) {
-      this.neutralSamples.push(result.angle);
+      this.neutralSamples.push(angle);
       if (this.neutralSamples.length >= 12) {
         this.neutral = median(this.neutralSamples);
       }
     }
+
     const value =
-      this.neutral === null ? 0 : -normalisePalmRoll(result.angle, this.neutral);
+      this.neutral === null ? 0 : -normalisePalmRoll(angle, this.neutral);
     this.onSample(
       {
         value,
-        confidence: result.confidence,
+        confidence,
         timestamp: performance.now(),
         source: "camera",
       },
-      result.landmarks,
+      landmarks.map(({ x, y }) => ({ x: 1 - x, y })),
     );
   }
+}
+
+function palmRoll(landmarks: NormalizedLandmark[]): number {
+  const indexKnuckle = landmarks[5]!;
+  const pinkyKnuckle = landmarks[17]!;
+  return (
+    (Math.atan2(
+      pinkyKnuckle.y - indexKnuckle.y,
+      pinkyKnuckle.x - indexKnuckle.x,
+    ) *
+      180) /
+    Math.PI
+  );
 }

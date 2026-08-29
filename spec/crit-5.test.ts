@@ -12,6 +12,8 @@ import { crashRun, initialRun } from "../game/rules.ts";
 const DIST = resolve("dist");
 const home = new JSDOM(readFileSync(resolve(DIST, "index.html"), "utf8")).window
   .document;
+const mainSource = readFileSync(resolve("main.ts"), "utf8");
+const cameraSource = readFileSync(resolve("game/camera.ts"), "utf8");
 
 describe("crit 5: no instructions anywhere", () => {
   const TUTORIAL_WORDS = /how to play|instructions|tutorial|click here to start/i;
@@ -46,5 +48,16 @@ describe("crit 5: the game can be lost", () => {
 
   it("makes a traffic collision terminal", () => {
     expect(crashRun(initialRun()).state).toBe("crashed");
+  });
+});
+
+describe("HANDSHIFT: camera-first control", () => {
+  it("starts real palm tracking without waiting for a control click", () => {
+    expect(mainSource).toMatch(/void palmCamera\.start\(\);/);
+  });
+
+  it("uses MediaPipe's live video API rather than worker image transfers", () => {
+    expect(cameraSource).toContain("detectForVideo");
+    expect(cameraSource).not.toContain("new Worker");
   });
 });

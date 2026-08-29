@@ -21,6 +21,7 @@ const finalScore = required<HTMLElement>("#final-score");
 const ending = required<HTMLElement>("#ending");
 const restartButton = required<HTMLButtonElement>("#restart");
 const cameraButton = required<HTMLButtonElement>("#camera");
+const cameraPreview = required<HTMLVideoElement>("#camera-preview");
 const audioButton = required<HTMLButtonElement>("#audio");
 const handTrace = required<HTMLCanvasElement>("#hand-trace");
 const handContext = handTrace.getContext("2d");
@@ -42,14 +43,18 @@ const input = new InputController(root, () => {
 });
 
 const palmCamera = new PalmCamera(
+  cameraPreview,
   (sample, landmarks) => {
     input.setCameraSample(sample);
     drawHand(landmarks);
     cameraButton.style.setProperty("--hand-roll", `${sample.value * 24}deg`);
   },
-  (state) => {
+  (state, reason) => {
+    root.dataset.cameraState = state;
     cameraButton.dataset.cameraState = state;
     cameraButton.classList.toggle("is-active", state === "ready");
+    cameraButton.dataset.cameraError = reason ?? "";
+    if (state === "error") drawHand([]);
   },
 );
 
@@ -57,6 +62,8 @@ cameraButton.addEventListener("click", () => {
   void audio.start();
   void palmCamera.start();
 });
+
+void palmCamera.start();
 
 audioButton.addEventListener("click", () => {
   void audio.start();
@@ -76,6 +83,7 @@ restartButton.addEventListener("click", () => {
 });
 
 window.addEventListener("resize", () => world.resize());
+window.addEventListener("pagehide", () => palmCamera.stop());
 
 function frame(now: number): void {
   const deltaSeconds = Math.min(0.05, Math.max(0, (now - lastFrame) / 1000));
