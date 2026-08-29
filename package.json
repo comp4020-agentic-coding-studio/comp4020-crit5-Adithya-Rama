@@ -8,17 +8,25 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "check": "pnpm typecheck && pnpm build && vitest run",
+    "lint": "oxlint --deny-warnings . && stylelint \"styles.css\"",
+    "check": "pnpm lint && pnpm typecheck && pnpm build && vitest run",
     "check:evidence": "node scripts/check-evidence.ts",
     "test": "vitest run"
   },
   "devDependencies": {
     "@types/jsdom": "^27.0.0",
     "@types/node": "^24.0.0",
+    "@types/three": "0.185.4",
     "jsdom": "^29.1.1",
+    "oxlint": "1.80.0",
+    "stylelint": "17.14.1",
     "typescript": "^6.0.3",
     "vite": "^8.1.5",
     "vitest": "^4.1.10"
   },
-  "packageManager": "pnpm@11.9.0"
+  "packageManager": "pnpm@11.9.0",
+  "dependencies": {
+    "@mediapipe/tasks-vision": "1.0.1",
+    "three": "0.185.1"
+  }
 }
