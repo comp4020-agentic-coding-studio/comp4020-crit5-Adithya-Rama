@@ -28,10 +28,23 @@ Do not override actual repository facts with stale documentation.
 The published spec for this deliverable (Crit 5, "A game") is the real
 contract, and under the priority order above it is a "repository
 safety/course constraint" --- it outranks every rule below it and every
-product-vision detail in `CLAUDE.md`.
+product-vision detail in `CLAUDE.md`:
 
-_Fill in the published spec's checkable lines here once pulled (course `start`
-skill, step 6)._
+1. deployed and live at its public GitHub Pages URL by the cutoff;
+2. it can be lost: a wrong move is possible, and play ends somewhere --- a
+   win, a loss or a finish;
+3. it teaches itself: no instructions anywhere, on screen or off --- the
+   opening screen invites the first move, and play teaches whatever comes
+   next;
+4. a stranger can pick it up and reach an ending inside five minutes;
+5. one rule of the game has a focused automated test, and one change you made
+   came from playing the finished game rather than reading its code;
+6. the repo shows the process --- commits that grew with the work, a process
+   overview in `PROCESS.md`, and the week's reflection in
+   `reflections/crit-5.md`;
+7. you can account for how you directed, grounded and corrected the work.
+
+Full text: <https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/crits/05-game/>
 
 Before any commit that claims a milestone, and always before invoking rule 10
 ("Before declaring completion"):

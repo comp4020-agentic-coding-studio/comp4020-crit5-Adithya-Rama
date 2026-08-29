@@ -11,9 +11,27 @@ which deliverable applies. Read both before you plan or build.
 
 ## Spec anchor --- Crit 5, "A game"
 
-_Fill this in with the published spec's checkable lines once pulled (course
-`start` skill, step 6). It overrides every architectural or product-vision
-detail below if the two ever disagree._
+This week's [published spec](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/crits/05-game/)
+is the actual contract, and it overrides every architectural or product-vision
+detail below if the two ever disagree:
+
+- deployed and live at its public GitHub Pages URL by the cutoff
+- it can be lost: a wrong move is possible, and play ends somewhere --- a win,
+  a loss or a finish
+- it teaches itself: no instructions anywhere, on screen or off --- the
+  opening screen invites the first move, and play teaches whatever comes next
+- a stranger can pick it up and reach an ending inside five minutes
+- one rule of the game has a focused automated test, and one change you made
+  came from playing the finished game rather than reading its code
+- the repo shows the process --- commits that grew with the work, a process
+  overview in `PROCESS.md`, and the week's reflection in
+  `reflections/crit-5.md`
+- you can account for how you directed, grounded and corrected the work
+
+`spec/crit-5.test.ts` carries the two mechanically-checkable lines (no
+instructions, a queryable game-over state). The rest --- five-minute pickup,
+the playtesting-derived change, how you directed the work --- is judged at the
+crit, not by a test.
 
 ## How to work in here
 
