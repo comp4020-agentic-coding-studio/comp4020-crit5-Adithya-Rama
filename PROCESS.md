@@ -1,70 +1,38 @@
 # Process overview
 
-<!-- TEMPLATE: this file is a shape to fill in, not a form. Replace everything
-     in it with your own overview, and delete this comment — `pnpm
-     check:evidence` will remind you if it's still here. -->
-
-A reading-guide to how the work came together --- a map to your process, not an
-essay about it. Markers read this file and follow its citations; they don't
-trawl the repo for evidence you didn't point at, so if a moment mattered, cite
-it.
-
-This file is the shape; the course site's
-[assessment page](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/topics/assessment/#what-you-submit)
-is the requirement, and its
-[word counts](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/topics/assessment/#word-counts)
-cover every deliverable.
-
 ## What I built
 
-One paragraph: the thing, and the idea behind it.
+I built HANDSHIFT, a browser-based 3D motorcycle game in which the player
+weaves through progressively denser highway traffic, builds a multiplier from
+close passes, and either crashes or reaches an illuminated finish. Keyboard and
+pointer steering are now primary; palm tracking remains an optional version of
+the same continuous steering mechanic.
 
 ## The moments that mattered
 
-Three or four for an assignment; fewer is fine for a weekly prototype. Keep the
-list short so each moment has room to do all four jobs:
+I first turned the Crit 5 requirements into a harness rather than treating them
+as a final checklist. The 210-second ending was originally 150 seconds, but the
+important constraints were already explicit: the game had to teach itself,
+remain playable without a camera, expose a testable run state, and keep runtime
+assets local. That scope is visible in
+[`8d0a2d8`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit5-Adithya-Rama/commit/8d0a2d8).
 
-1. **what happened** --- the problem, or the thing that went wrong
-2. **what you did instead of the obvious thing** --- the call you made, and why
-   it beat the obvious one
-3. **how you knew it was right** --- the check you ran, the viewport you looked
-   at, what you read before accepting the diff
-4. **the citation** --- a commit or commit range, a `CLAUDE.md` change, a check
-   that went from red to green, a prompt paired with the commit it produced
+Next I separated rules from presentation. Collision, close-pass scoring and the
+timed ending landed as deterministic functions and focused tests before the
+Three.js highway, motorcycle and traffic were built. This made later tuning
+safer because graphical changes could not silently redefine the game. See
+[`6f6a759...df66b54`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit5-Adithya-Rama/compare/6f6a759...df66b54).
 
-Jobs 2 and 3 are the ones the repo can't tell a reader on its own, so they're
-where the marks are. The strongest moments are the ones where a correction
-landed in the **harness** --- the standards and checks your work has to satisfy
---- rather than in a retry: a rule added to `CLAUDE.md`, a check wired up, an
-attempt thrown away. Retrying until it passes is the routine case, and changing
-what the work runs against is the skilled one.
+The decisive correction came from actual use, not code inspection:
 
-Cite each moment as a link whose text is the commit hash or range and whose
-target is this repo's commit or compare URL, so a reader clicks straight to the
-evidence:
+> “no its not tracking my hand at all”
 
-- one commit: [`a1b2c3d`](https://github.com/YOUR-ORG/YOUR-REPO/commit/a1b2c3d)
-- a range:
-  [`a1b2c3d...e4f5a6b`](https://github.com/YOUR-ORG/YOUR-REPO/compare/a1b2c3d...e4f5a6b)
-
-To pair a prompt with the commit it produced, quote the prompt (curated, not a
-full transcript) next to the citation:
-
-> the prompt, verbatim
-
-Screenshots are welcome where one carries the verification better than a
-sentence does. Commit the file to this repo and link it with a **relative**
-path, which is what makes it render on GitHub: `![alt text](docs/before.png)`.
-Images don't count towards the word count and don't replace the citation.
-
-## Before you ship
-
-`pnpm check:evidence` verifies your citations resolve to real commits, that a
-reflection entry the marker reads is in `reflections/`, and that your
-`CLAUDE.md` is there --- before a marker ever opens the file. It checks that
-your map is traceable, not that it is good: the marker judges whether your
-small, deliberately chosen set of moments shows real judgement and reflection. A
-green check is not a substitute for that curation.
-
-Images aren't checked: unlike a citation whose SHA doesn't resolve, a broken
-image is visible the moment this file is rendered on GitHub.
+I replaced the non-working hand pipeline with MediaPipe video inference and
+local GPU/CPU fallback. After the camera worked, the next play feedback was that
+it was still imprecise. I therefore made keyboard and pointer primary, retained
+camera as optional, added steadier palm calibration, extended the run to 210
+seconds, and coordinated speed, traffic, trucks and visual progression through
+one difficulty curve. The confirmed camera correction is
+[`79a66df`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit5-Adithya-Rama/commit/79a66df);
+the later play-derived polish remains pending final visual playtest and its own
+commit.

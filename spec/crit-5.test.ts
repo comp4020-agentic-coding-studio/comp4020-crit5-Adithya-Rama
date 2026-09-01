@@ -52,8 +52,10 @@ describe("crit 5: the game can be lost", () => {
 });
 
 describe("HANDSHIFT: camera-first control", () => {
-  it("starts real palm tracking without waiting for a control click", () => {
-    expect(mainSource).toMatch(/void palmCamera\.start\(\);/);
+  it("keeps palm tracking optional behind its camera control", () => {
+    expect(mainSource.match(/void palmCamera\.start\(\);/g)).toHaveLength(1);
+    expect(mainSource).toContain('cameraButton.addEventListener("click"');
+    expect(home.querySelector("#camera")).toBeTruthy();
   });
 
   it("uses MediaPipe's live video API rather than worker image transfers", () => {

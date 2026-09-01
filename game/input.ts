@@ -1,6 +1,7 @@
 import type { SteeringSample } from "./types.ts";
 
 const ACTIVE_CAMERA_MS = 420;
+const ACTIVE_POINTER_MS = 1500;
 
 export class InputController {
   private keyboard = new Set<string>();
@@ -35,14 +36,6 @@ export class InputController {
       (this.keyboard.has("ArrowRight") || this.keyboard.has("KeyD") ? 1 : 0) -
       (this.keyboard.has("ArrowLeft") || this.keyboard.has("KeyA") ? 1 : 0);
 
-    if (
-      this.cameraSample &&
-      now - this.cameraSample.timestamp <= ACTIVE_CAMERA_MS &&
-      this.cameraSample.confidence >= 0.45
-    ) {
-      return this.cameraSample;
-    }
-
     if (keyboardValue !== 0) {
       return {
         value: keyboardValue,
@@ -50,6 +43,18 @@ export class InputController {
         timestamp: now,
         source: "keyboard",
       };
+    }
+
+    if (now - this.pointerSample.timestamp <= ACTIVE_POINTER_MS) {
+      return this.pointerSample;
+    }
+
+    if (
+      this.cameraSample &&
+      now - this.cameraSample.timestamp <= ACTIVE_CAMERA_MS &&
+      this.cameraSample.confidence >= 0.45
+    ) {
+      return this.cameraSample;
     }
 
     return this.pointerSample;
@@ -68,7 +73,6 @@ export class InputController {
   private readonly onPointer = (event: PointerEvent): void => {
     if (event.type === "pointerdown") {
       this.target.setPointerCapture(event.pointerId);
-      this.onActivity();
     }
     if (event.pointerType !== "mouse" && event.buttons === 0) return;
     const bounds = this.target.getBoundingClientRect();
@@ -79,6 +83,7 @@ export class InputController {
       timestamp: performance.now(),
       source: "pointer",
     };
+    if (Math.abs(this.pointerSample.value) > 0.06) this.onActivity();
   };
 
   private readonly onPointerUp = (event: PointerEvent): void => {

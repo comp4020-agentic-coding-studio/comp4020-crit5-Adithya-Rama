@@ -5,6 +5,7 @@ import {
   applyNearMiss,
   classifyPass,
   crashRun,
+  difficultyAt,
   initialRun,
 } from "./rules.ts";
 
@@ -28,7 +29,19 @@ describe("HANDSHIFT rules", () => {
     expect(rewarded.multiplier).toBe(1.5);
   });
 
-  it("finishes a surviving run at 150 seconds", () => {
+  it("increases speed, traffic frequency and truck pressure over time", () => {
+    const opening = difficultyAt(0);
+    const middle = difficultyAt(RUN_DURATION_SECONDS / 2);
+    const finale = difficultyAt(RUN_DURATION_SECONDS);
+
+    expect(middle.worldSpeed).toBeGreaterThan(opening.worldSpeed);
+    expect(finale.worldSpeed).toBeGreaterThan(middle.worldSpeed);
+    expect(middle.spawnInterval).toBeLessThan(opening.spawnInterval);
+    expect(finale.spawnInterval).toBeLessThan(middle.spawnInterval);
+    expect(finale.truckChance).toBeGreaterThan(opening.truckChance);
+  });
+
+  it("finishes a surviving run at 210 seconds", () => {
     const run = advanceRun(
       { ...initialRun(), elapsed: RUN_DURATION_SECONDS - 0.1 },
       0.1,

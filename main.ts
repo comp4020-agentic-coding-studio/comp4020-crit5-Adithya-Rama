@@ -4,6 +4,7 @@ import { InputController } from "./game/input.ts";
 import {
   RUN_DURATION_SECONDS,
   advanceRun,
+  difficultyAt,
   applyNearMiss,
   crashRun,
   initialRun,
@@ -15,6 +16,8 @@ const canvas = required<HTMLCanvasElement>("#road");
 const scoreOutput = required<HTMLElement>("#score");
 const timeOutput = required<HTMLElement>("#time");
 const multiplierOutput = required<HTMLElement>("#multiplier");
+const speedOutput = required<HTMLElement>("#speed");
+const progressFill = required<HTMLElement>("#run-progress-fill");
 const rewardOutput = required<HTMLOutputElement>("#reward");
 const endPanel = required<HTMLElement>("#end-panel");
 const finalScore = required<HTMLElement>("#final-score");
@@ -33,6 +36,7 @@ let started = false;
 let ended = false;
 let lastFrame = performance.now();
 let rewardTimer = 0;
+let displaySpeed = 0;
 
 const input = new InputController(root, () => {
   if (!started && run.state === "playing") {
@@ -63,8 +67,6 @@ cameraButton.addEventListener("click", () => {
   void palmCamera.start();
 });
 
-void palmCamera.start();
-
 audioButton.addEventListener("click", () => {
   void audio.start();
   const muted = audio.toggle();
@@ -75,6 +77,7 @@ restartButton.addEventListener("click", () => {
   run = initialRun();
   started = false;
   ended = false;
+  displaySpeed = 0;
   root.dataset.gameState = "playing";
   root.classList.remove("is-running", "is-ended", "is-crashed", "is-finished");
   endPanel.hidden = true;
@@ -89,6 +92,11 @@ function frame(now: number): void {
   const deltaSeconds = Math.min(0.05, Math.max(0, (now - lastFrame) / 1000));
   lastFrame = now;
   const steering = input.sample(now);
+  const difficulty = difficultyAt(run.elapsed);
+  const targetSpeed =
+    started && run.state === "playing" ? difficulty.worldSpeed * 4.65 : 0;
+  displaySpeed +=
+    (targetSpeed - displaySpeed) * Math.min(1, deltaSeconds * 2.8);
   const events = world.update(
     deltaSeconds,
     run.elapsed,
@@ -109,7 +117,7 @@ function frame(now: number): void {
         showReward(events.thread ? "THREAD" : "CLOSE");
         audio.nearMiss(events.thread);
       }
-      const speed = 32 + (run.elapsed / RUN_DURATION_SECONDS) * 22;
+      const speed = difficulty.worldSpeed;
       run = advanceRun(run, deltaSeconds, speed);
       audio.update(speed / 54, steering.value);
     }
@@ -145,6 +153,8 @@ function updateHud(): void {
   const remaining = Math.max(0, Math.ceil(RUN_DURATION_SECONDS - run.elapsed));
   timeOutput.textContent = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`;
   multiplierOutput.textContent = `×${run.multiplier.toFixed(1)}`;
+  speedOutput.textContent = String(Math.round(displaySpeed)).padStart(3, "0");
+  progressFill.style.transform = `scaleX(${Math.min(1, run.elapsed / RUN_DURATION_SECONDS)})`;
 }
 
 function showReward(label: string): void {

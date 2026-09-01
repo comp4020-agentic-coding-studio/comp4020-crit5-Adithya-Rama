@@ -1,8 +1,19 @@
 import type { HitBox, RunSnapshot } from "./types.ts";
 
-export const RUN_DURATION_SECONDS = 150;
+export const RUN_DURATION_SECONDS = 210;
+export const FINISH_SEQUENCE_SECONDS = 15;
 export const NEAR_MISS_CLEARANCE = 0.45;
 export const MAX_MULTIPLIER = 5;
+
+export interface DifficultyProfile {
+  progress: number;
+  worldSpeed: number;
+  spawnInterval: number;
+  burstChance: number;
+  truckChance: number;
+  trafficCruiseMin: number;
+  trafficCruiseMax: number;
+}
 
 export type PassOutcome = "collision" | "near-miss" | "none";
 
@@ -34,6 +45,23 @@ export function classifyPass(
     return "near-miss";
   }
   return "none";
+}
+
+export function difficultyAt(elapsedSeconds: number): DifficultyProfile {
+  const progress = Math.max(
+    0,
+    Math.min(1, elapsedSeconds / RUN_DURATION_SECONDS),
+  );
+  const eased = progress * progress * (3 - 2 * progress);
+  return {
+    progress,
+    worldSpeed: 25 + eased * 23,
+    spawnInterval: 2.7 - eased * 1.72,
+    burstChance: 0.08 + eased * 0.62,
+    truckChance: 0.04 + eased * 0.31,
+    trafficCruiseMin: 10 + eased * 3,
+    trafficCruiseMax: 20 + eased * 5,
+  };
 }
 
 export function initialRun(): RunSnapshot {

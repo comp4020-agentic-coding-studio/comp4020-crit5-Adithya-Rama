@@ -3,7 +3,11 @@ import type {
   HandLandmarkerResult,
   NormalizedLandmark,
 } from "@mediapipe/tasks-vision";
-import { median, normalisePalmRoll } from "./steering.ts";
+import {
+  angularSpreadDegrees,
+  circularMeanDegrees,
+  normalisePalmRoll,
+} from "./steering.ts";
 import type { SteeringSample } from "./types.ts";
 
 type CameraState = "loading" | "ready" | "error";
@@ -15,6 +19,7 @@ export class PalmCamera {
   private timer = 0;
   private starting = false;
   private neutralSamples: number[] = [];
+  private angleWindow: number[] = [];
   private neutral: number | null = null;
 
   constructor(
@@ -78,6 +83,7 @@ export class PalmCamera {
       }
 
       this.neutralSamples = [];
+      this.angleWindow = [];
       this.neutral = null;
       this.onState("ready");
       this.timer = window.setInterval(() => this.detectFrame(), 66);
@@ -100,6 +106,7 @@ export class PalmCamera {
     this.video.pause();
     this.video.srcObject = null;
     this.neutralSamples = [];
+    this.angleWindow = [];
     this.neutral = null;
   }
 
@@ -138,11 +145,19 @@ export class PalmCamera {
     const confidence = result.handedness[0]?.[0]?.score ?? 1;
     if (confidence < 0.45) return;
 
-    const angle = palmRoll(landmarks);
+    const rawAngle = palmRoll(landmarks);
+    this.angleWindow.push(rawAngle);
+    if (this.angleWindow.length > 5) this.angleWindow.shift();
+    const angle = circularMeanDegrees(this.angleWindow);
+
     if (this.neutral === null) {
       this.neutralSamples.push(angle);
-      if (this.neutralSamples.length >= 12) {
-        this.neutral = median(this.neutralSamples);
+      if (this.neutralSamples.length > 24) this.neutralSamples.shift();
+      if (
+        this.neutralSamples.length >= 18 &&
+        angularSpreadDegrees(this.neutralSamples) <= 5.5
+      ) {
+        this.neutral = circularMeanDegrees(this.neutralSamples);
       }
     }
 

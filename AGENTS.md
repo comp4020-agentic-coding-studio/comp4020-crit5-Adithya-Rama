@@ -59,13 +59,15 @@ Before any commit that claims a milestone, and always before invoking rule 10
 
 ## 0.1 HANDSHIFT product contract
 
-The chosen response is **HANDSHIFT**, a camera-first 3D motorcycle game. Keep
-the response pointed and small even when polishing it:
+The chosen response is **HANDSHIFT**, a keyboard-and-pointer-first 3D motorcycle
+game with optional hand tracking. Keep the response pointed and small even when
+polishing it:
 
-* one palm-roll mechanic controls continuous lateral steering;
-* pointer/touch and keyboard use the same steering signal and remain complete
-  fallbacks when camera permission, lighting or tracking fails;
-* a run ends in a crash or at the illuminated finish after 150 seconds;
+* one continuous lateral steering mechanic is driven primarily by keyboard or
+  pointer/touch, with optional palm roll using the same normalized signal;
+* keyboard and pointer/touch remain immediately playable whether camera
+  permission, lighting or tracking succeeds or fails;
+* a run ends in a crash or at the illuminated finish after 210 seconds;
 * the root exposes `data-game-state="playing|crashed|finished"` and keeps it in
   sync with the real run state;
 * there is no instructional copy, tutorial screen, help dialog, or README

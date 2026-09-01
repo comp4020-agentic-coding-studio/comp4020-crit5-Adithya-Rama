@@ -35,13 +35,13 @@ crit, not by a test.
 
 ## Product charter --- HANDSHIFT
 
-HANDSHIFT is a premium-feeling browser arcade ride built around one physical
-idea: the player's palm becomes the motorcycle's handlebar. Palm roll maps to
-continuous lateral steering; close non-colliding passes build score and
-multiplier; a collision ends the run; surviving 150 seconds reaches a finish.
+HANDSHIFT is a premium-feeling browser arcade ride built around continuous
+lateral steering. Keyboard and pointer are the primary controls; optional palm
+roll maps to the same steering signal. Close non-colliding passes build score
+and multiplier; a collision ends the run; surviving 210 seconds reaches a finish.
 
 The opening is already live. A motorcycle idles on a sparse sunset highway, a
-camera/palm glyph invites interaction, and the bike mirrors the first useful
+handlebar-motion glyph invites interaction, and the bike mirrors the first useful
 steering signal before traffic becomes dangerous. Do not explain this with
 words. The title, score, multiplier, time, reward words, and icon-only
 camera/audio/restart controls are allowed; how-to copy is not.
@@ -52,11 +52,11 @@ camera/audio/restart controls are allowed; how-to copy is not.
 - Use Three.js for a procedural low/mid-poly road, bike, traffic and effects.
 - Lazy-load MediaPipe Hand Landmarker only after camera activation. Its WASM
   and model are local assets, not CDN URLs.
-- Normalise camera, pointer/touch and keyboard into the same timestamped
-  steering sample. The most recent valid source wins; camera loss recentres
-  smoothly without disabling fallbacks.
+- Normalise keyboard, pointer/touch and camera into the same timestamped
+  steering sample. A held key wins, then a recent pointer gesture, then a fresh
+  camera sample; camera loss recentres smoothly without affecting primary play.
 - Keep rules pure: seeded traffic, collision, near-miss classification,
-  multiplier and the 150-second finish must not depend on Three.js.
+  multiplier and the 210-second finish must not depend on Three.js.
 - Treat `playing`, `crashed` and `finished` as the public run-state contract
   and mirror it on the game root through `data-game-state`.
 - Synthesize sound with Web Audio after a user gesture. Do not add downloaded

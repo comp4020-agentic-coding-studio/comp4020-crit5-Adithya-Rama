@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <main id="game" data-game-state="playing" data-camera-state="loading">
+    <main id="game" data-game-state="playing" data-camera-state="idle">
       <div class="skyline" aria-hidden="true"></div>
       <canvas id="road" aria-hidden="true"></canvas>
       <div class="vignette" aria-hidden="true"></div>
@@ -44,15 +44,22 @@
         </div>
         <div class="time">
           <span>RUN</span>
-          <strong id="time">2:30</strong>
+          <strong id="time">3:30</strong>
+        </div>
+        <div class="speed">
+          <strong id="speed">000</strong>
+          <span>KM/H</span>
         </div>
         <div class="multiplier" id="multiplier">×1.0</div>
+        <div class="run-progress" aria-hidden="true">
+          <i id="run-progress-fill"></i>
+        </div>
       </section>
 
       <div class="opening-signal" aria-hidden="true">
         <span class="steer-line"></span>
         <svg viewBox="0 0 64 64">
-          <path d="M17 27v-7a4 4 0 0 1 8 0v-5a4 4 0 0 1 8 0v-3a4 4 0 0 1 8 0v7a4 4 0 0 1 8 0v14c0 12-6 20-18 20-8 0-13-4-17-12L9 31a4 4 0 0 1 8-4Z" />
+          <path d="M10 31h12l5-8h10l5 8h12M21 31l-5 10m27-10 5 10M27 23l5 8 5-8" />
         </svg>
       </div>
 
