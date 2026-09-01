@@ -1,6 +1,6 @@
 export type GameState = "playing" | "crashed" | "finished";
 
-export type SteeringSource = "camera" | "pointer" | "keyboard";
+export type SteeringSource = "pointer" | "keyboard";
 
 export interface SteeringSample {
   value: number;

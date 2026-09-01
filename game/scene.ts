@@ -10,7 +10,7 @@ import { smoothSteering } from "./steering.ts";
 import type { HitBox } from "./types.ts";
 
 const ROAD_LENGTH = 18;
-const ROAD_SEGMENTS = 12;
+const ROAD_SEGMENTS = 10;
 const LANE_CENTRES = [-4.5, -1.5, 1.5, 4.5] as const;
 const PLAYER_BOX: HitBox = { x: 0, z: 0, width: 0.9, length: 2.1 };
 
@@ -22,6 +22,7 @@ interface TrafficEntry {
   scored: boolean;
   active: boolean;
   truck: boolean;
+  oncoming: boolean;
   laneX: number;
   driftPhase: number;
   driftAmount: number;
@@ -42,7 +43,7 @@ export interface SceneEvents {
 export class GameScene {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
-  private readonly camera = new THREE.PerspectiveCamera(62, 1, 0.1, 340);
+  private readonly camera = new THREE.PerspectiveCamera(62, 1, 0.1, 300);
   private readonly road = new THREE.Group();
   private readonly bike = createBike();
   private readonly traffic: TrafficEntry[] = [];
@@ -53,6 +54,7 @@ export class GameScene {
   private readonly keyLight = new THREE.DirectionalLight(0xff8766, 3.8);
   private readonly rimLight = new THREE.PointLight(0x4fdcff, 18, 34, 1.7);
   private readonly stars = createStars();
+  private readonly horizon = createHorizon();
   private rngState = 0x48314e44;
   private spawnClock = 0;
   private playerX = 0;
@@ -62,7 +64,7 @@ export class GameScene {
   private cameraX = 0;
   private crashTime = 0;
   private frameWindow: number[] = [];
-  private pixelRatioCap = 1.5;
+  private pixelRatioCap = 1.25;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({
@@ -74,25 +76,19 @@ export class GameScene {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.18;
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.scene.fog = new THREE.FogExp2(0x182448, 0.012);
     this.scene.add(this.ambient);
     this.keyLight.position.set(-8, 16, 7);
-    this.keyLight.castShadow = true;
-    this.keyLight.shadow.mapSize.set(1024, 1024);
-    this.keyLight.shadow.camera.near = 2;
-    this.keyLight.shadow.camera.far = 55;
     this.rimLight.position.set(0, 4, 4);
-    this.scene.add(this.keyLight, this.rimLight, this.stars);
+    this.scene.add(this.keyLight, this.rimLight, this.stars, this.horizon);
 
     this.buildRoad();
     this.scene.add(this.road);
     this.bike.position.set(0, 0.56, 0);
     this.scene.add(this.bike);
 
-    for (let index = 0; index < 20; index += 1) {
+    for (let index = 0; index < 16; index += 1) {
       const dimensions = index % 5 === 0
         ? { width: 2.25, length: 6.2, truck: true }
         : { width: 1.72, length: 3.7, truck: false };
@@ -104,6 +100,7 @@ export class GameScene {
         scored: false,
         active: false,
         truck: dimensions.truck,
+        oncoming: false,
         laneX: 0,
         driftPhase: this.random() * Math.PI * 2,
         driftAmount: 0,
@@ -117,8 +114,8 @@ export class GameScene {
     this.scene.add(this.finishGate);
     this.buildStreaks();
 
-    this.camera.position.set(0, 3.2, 7.3);
-    this.camera.lookAt(0, 0.7, -13);
+    this.camera.position.set(0, 2.72, 6.45);
+    this.camera.lookAt(0, 0.88, -15);
     this.resize();
   }
 
@@ -143,10 +140,14 @@ export class GameScene {
     this.crashTime = 0;
     this.bike.position.set(0, 0.56, 0);
     this.bike.rotation.set(0, 0, 0);
+    const riderRig = this.bike.userData.riderRig as THREE.Group;
+    riderRig.rotation.set(0, 0, 0);
+    riderRig.position.x = 0;
     this.finishGate.visible = false;
     this.traffic.forEach((entry) => {
       entry.active = false;
       entry.scored = false;
+      entry.oncoming = false;
       entry.group.visible = false;
     });
     this.clearParticles();
@@ -175,8 +176,8 @@ export class GameScene {
 
     if (!crashed) {
       const targetVelocity =
-        this.steering * (7.2 + difficulty.progress * 2.7);
-      const traction = 4.8 + difficulty.progress * 1.8;
+        this.steering * (6.7 + difficulty.progress * 2.35);
+      const traction = 3.65 + difficulty.progress * 1.45;
       this.lateralVelocity +=
         (targetVelocity - this.lateralVelocity) *
         Math.min(1, deltaSeconds * traction);
@@ -189,10 +190,19 @@ export class GameScene {
       const suspension = started ? Math.sin(this.roadTime * 0.42) * 0.018 : 0;
       this.bike.position.set(this.playerX, 0.56 + suspension, 0);
       this.bike.rotation.z +=
-        (-this.steering * 0.5 - this.bike.rotation.z) *
+        (-this.steering * 0.62 - this.bike.rotation.z) *
         Math.min(1, deltaSeconds * 8);
-      this.bike.rotation.y = -this.lateralVelocity * 0.012;
-      this.bike.rotation.x = Math.sin(this.roadTime * 0.16) * 0.008;
+      this.bike.rotation.y = -this.lateralVelocity * 0.016;
+      this.bike.rotation.x = Math.sin(this.roadTime * 0.16) * 0.01;
+      const riderRig = this.bike.userData.riderRig as THREE.Group;
+      riderRig.rotation.z +=
+        (-this.steering * 0.24 - riderRig.rotation.z) *
+        Math.min(1, deltaSeconds * 9);
+      riderRig.rotation.y =
+        -this.steering * 0.08 + Math.sin(this.roadTime * 0.2) * 0.008;
+      riderRig.position.x = this.steering * 0.055;
+      const handlebar = this.bike.userData.handlebar as THREE.Object3D;
+      handlebar.rotation.y = -this.steering * 0.22;
       for (const wheel of this.bike.userData.wheels as THREE.Object3D[]) {
         wheel.rotation.x -= (worldSpeed * deltaSeconds) / 0.43;
       }
@@ -208,15 +218,22 @@ export class GameScene {
     this.cameraX +=
       (this.playerX * 0.22 - this.cameraX) * Math.min(1, deltaSeconds * 4.5);
     this.camera.position.x = this.cameraX;
-    this.camera.position.y = 3.2 + Math.sin(this.roadTime * 0.12) * 0.025;
+    this.camera.position.y =
+      2.72 +
+      Math.sin(this.roadTime * 0.14) * 0.035 +
+      Math.abs(this.steering) * 0.06;
     this.camera.rotation.z +=
-      (-this.steering * 0.045 - this.camera.rotation.z) *
+      (-this.steering * 0.035 - this.camera.rotation.z) *
       Math.min(1, deltaSeconds * 4.5);
-    const baseFov = this.canvas.clientWidth < 600 ? 72 : 62;
+    const baseFov = this.canvas.clientWidth < 600 ? 74 : 64;
     const targetFov = baseFov + difficulty.progress * 6 + Math.abs(this.steering) * 1.5;
     this.camera.fov += (targetFov - this.camera.fov) * Math.min(1, deltaSeconds * 2.8);
     this.camera.updateProjectionMatrix();
-    this.camera.lookAt(this.playerX * 0.18, 0.72, -14);
+    this.camera.lookAt(
+      this.playerX * 0.2 + this.steering * 0.24,
+      0.86,
+      -15.5,
+    );
 
     this.moveRoad(deltaSeconds, worldSpeed);
     this.updateStreaks(deltaSeconds, worldSpeed, difficulty.progress);
@@ -243,19 +260,23 @@ export class GameScene {
 
     for (const entry of this.traffic) {
       if (!entry.active) continue;
-      entry.group.position.z +=
-        (worldSpeed - entry.cruiseSpeed) * deltaSeconds;
+      const previousZ = entry.group.position.z;
+      const relativeSpeed = entry.oncoming
+        ? worldSpeed + entry.cruiseSpeed
+        : worldSpeed - entry.cruiseSpeed;
+      entry.group.position.z += relativeSpeed * deltaSeconds;
       const drift =
         Math.sin(elapsed * 0.7 + entry.driftPhase) * entry.driftAmount;
       entry.group.position.x = entry.laneX + drift;
-      entry.group.rotation.y = drift * 0.018;
+      entry.group.rotation.y =
+        (entry.oncoming ? Math.PI : 0) + drift * 0.018;
       entry.group.position.y +=
         (Math.sin(elapsed * 5 + entry.driftPhase) * 0.012 -
           (entry.group.position.y - (entry.truck ? 0.65 : 0.48))) *
         Math.min(1, deltaSeconds * 8);
       for (const wheel of entry.group.userData.wheels as THREE.Object3D[]) {
         wheel.rotation.x +=
-          ((worldSpeed - entry.cruiseSpeed) * deltaSeconds) / 0.38;
+          (relativeSpeed * deltaSeconds * (entry.oncoming ? -1 : 1)) / 0.38;
       }
       const box: HitBox = {
         x: entry.group.position.x,
@@ -269,6 +290,7 @@ export class GameScene {
         box,
         entry.group.position.z > 2.7,
         entry.scored,
+        previousZ,
       );
 
       if (outcome === "collision") {
@@ -279,7 +301,11 @@ export class GameScene {
       if (outcome === "near-miss") {
         entry.scored = true;
         events.nearMisses += 1;
-        this.explode(entry.group.position.x, 0x58e6ff, 8);
+        this.explode(
+          entry.group.position.x,
+          entry.oncoming ? 0xffc451 : 0x58e6ff,
+          entry.oncoming ? 12 : 8,
+        );
       }
       if (entry.group.position.z > 14) this.deactivate(entry);
     }
@@ -300,12 +326,10 @@ export class GameScene {
   }
 
   private buildRoad(): void {
-    const roadMaterial = new THREE.MeshPhysicalMaterial({
+    const roadMaterial = new THREE.MeshStandardMaterial({
       color: 0x0b1422,
       roughness: 0.24,
       metalness: 0.52,
-      clearcoat: 0.72,
-      clearcoatRoughness: 0.2,
     });
     const barrierMaterial = new THREE.MeshStandardMaterial({
       color: 0x263752,
@@ -318,11 +342,10 @@ export class GameScene {
       emissiveIntensity: 1.35,
       roughness: 0.25,
     });
-    const shoulderMaterial = new THREE.MeshPhysicalMaterial({
+    const shoulderMaterial = new THREE.MeshStandardMaterial({
       color: 0x17243a,
       roughness: 0.3,
       metalness: 0.58,
-      clearcoat: 0.48,
     });
     const reflectorMaterial = new THREE.MeshStandardMaterial({
       color: 0xbff8ff,
@@ -335,6 +358,26 @@ export class GameScene {
       emissive: 0x7a102e,
       emissiveIntensity: 1.8,
       roughness: 0.38,
+    });
+    const vergeMaterial = new THREE.MeshStandardMaterial({
+      color: 0x101d2b,
+      roughness: 0.96,
+      metalness: 0.02,
+    });
+    const trunkMaterial = new THREE.MeshStandardMaterial({
+      color: 0x2a2022,
+      roughness: 1,
+    });
+    const foliageMaterial = new THREE.MeshStandardMaterial({
+      color: 0x123b42,
+      emissive: 0x06171e,
+      emissiveIntensity: 0.55,
+      roughness: 0.9,
+    });
+    const rockMaterial = new THREE.MeshStandardMaterial({
+      color: 0x4a5064,
+      roughness: 0.88,
+      metalness: 0.08,
     });
 
     for (let index = 0; index < ROAD_SEGMENTS; index += 1) {
@@ -350,6 +393,37 @@ export class GameScene {
       segment.add(surface);
 
       for (const side of [-1, 1]) {
+        const verge = new THREE.Mesh(
+          new THREE.BoxGeometry(8, 0.12, ROAD_LENGTH + 0.1),
+          vergeMaterial,
+        );
+        verge.position.set(side * 11.35, -0.12, 0);
+        verge.receiveShadow = true;
+        segment.add(verge);
+
+        for (let treeIndex = 0; treeIndex < 1; treeIndex += 1) {
+          const tree = createPine(trunkMaterial, foliageMaterial);
+          const spread = 8.25 + this.random() * 6.2;
+          tree.position.set(
+            side * spread,
+            0,
+            -6.5 + treeIndex * 10 + this.random() * 3,
+          );
+          tree.scale.setScalar(0.7 + this.random() * 0.8);
+          tree.rotation.y = this.random() * Math.PI;
+          segment.add(tree);
+        }
+
+        if ((index + (side > 0 ? 1 : 0)) % 3 === 0) {
+          const rock = createRock(rockMaterial);
+          rock.position.set(side * (9.1 + this.random() * 3.6), 0.4, 4);
+          rock.scale.set(
+            1.2 + this.random() * 1.7,
+            0.75 + this.random() * 1.25,
+            1.1 + this.random() * 1.6,
+          );
+          segment.add(rock);
+        }
         const shoulder = new THREE.Mesh(
           new THREE.BoxGeometry(1.05, 0.1, ROAD_LENGTH),
           shoulderMaterial,
@@ -457,7 +531,7 @@ export class GameScene {
       transparent: true,
       opacity: 0.24,
     });
-    for (let index = 0; index < 52; index += 1) {
+    for (let index = 0; index < 36; index += 1) {
       const streak = new THREE.Mesh(
         new THREE.BoxGeometry(0.025, 0.025, 2.2 + this.random() * 5),
         material.clone(),
@@ -507,6 +581,7 @@ export class GameScene {
     count = Math.min(count, available.length, 3);
 
     const shuffled = [...LANE_CENTRES].sort(() => this.random() - 0.5);
+    let spawnedOncoming = false;
     for (let index = 0; index < count; index += 1) {
       const wantsTruck = this.random() < difficulty.truckChance;
       const preferred = available.find(
@@ -515,29 +590,46 @@ export class GameScene {
       const entry = preferred ?? available.find((candidate) => !candidate.active);
       if (!entry) break;
 
+      const oncoming: boolean =
+        !spawnedOncoming &&
+        difficulty.oncomingChance > 0 &&
+        this.random() < difficulty.oncomingChance;
+      if (oncoming) spawnedOncoming = true;
       entry.active = true;
       entry.scored = false;
+      entry.oncoming = oncoming;
       entry.group.visible = true;
       entry.laneX = shuffled[index]!;
+      entry.group.rotation.y = oncoming ? Math.PI : 0;
+      for (const beam of entry.group.userData.headBeams as THREE.Object3D[]) {
+        beam.visible = oncoming;
+      }
       entry.driftPhase = this.random() * Math.PI * 2;
       entry.driftAmount =
         difficulty.progress < 0.25 ? 0.025 : 0.04 + this.random() * 0.09;
       entry.group.position.set(
         entry.laneX,
         entry.truck ? 0.65 : 0.48,
-        -94 - index * (8 + this.random() * 5),
+        (oncoming ? -148 : -94) - index * (8 + this.random() * 5),
       );
-      entry.cruiseSpeed = THREE.MathUtils.lerp(
-        difficulty.trafficCruiseMin,
-        difficulty.trafficCruiseMax,
-        this.random(),
-      );
+      entry.cruiseSpeed = oncoming
+        ? THREE.MathUtils.lerp(
+            difficulty.oncomingSpeedMin,
+            difficulty.oncomingSpeedMax,
+            this.random(),
+          )
+        : THREE.MathUtils.lerp(
+            difficulty.trafficCruiseMin,
+            difficulty.trafficCruiseMax,
+            this.random(),
+          );
     }
   }
 
   private deactivate(entry: TrafficEntry): void {
     entry.active = false;
     entry.scored = false;
+    entry.oncoming = false;
     entry.group.visible = false;
   }
 
@@ -619,7 +711,7 @@ export class GameScene {
       this.frameWindow.reduce((total, fps) => total + fps, 0) /
       this.frameWindow.length;
     this.frameWindow = [];
-    if (average < 38 && this.pixelRatioCap > 1) {
+    if (average < 46 && this.pixelRatioCap > 1) {
       this.pixelRatioCap = 1;
       this.resize();
       for (let index = 0; index < this.streaks.length; index += 2) {
@@ -641,14 +733,12 @@ function createBike(): THREE.Group {
     roughness: 0.24,
     metalness: 0.86,
   });
-  const body = new THREE.MeshPhysicalMaterial({
+  const body = new THREE.MeshStandardMaterial({
     color: 0x514cff,
     emissive: 0x17135f,
     emissiveIntensity: 1.5,
     roughness: 0.2,
     metalness: 0.7,
-    clearcoat: 1,
-    clearcoatRoughness: 0.16,
   });
   const metal = new THREE.MeshStandardMaterial({
     color: 0xb7c4d7,
@@ -659,13 +749,12 @@ function createBike(): THREE.Group {
     color: 0x05070a,
     roughness: 0.96,
   });
-  const glass = new THREE.MeshPhysicalMaterial({
+  const glass = new THREE.MeshStandardMaterial({
     color: 0x152b45,
     roughness: 0.08,
     metalness: 0.22,
     transparent: true,
     opacity: 0.7,
-    clearcoat: 1,
   });
   const wheels: THREE.Object3D[] = [];
 
@@ -740,6 +829,24 @@ function createBike(): THREE.Group {
   tail.rotation.x = -0.1;
   group.add(tail);
 
+  const seat = new THREE.Mesh(
+    new THREE.BoxGeometry(0.4, 0.12, 0.7),
+    dark,
+  );
+  seat.position.set(0, 1.08, 0.46);
+  seat.rotation.x = -0.12;
+  group.add(seat);
+
+  for (const side of [-1, 1]) {
+    const swingarm = new THREE.Mesh(
+      new THREE.BoxGeometry(0.07, 0.1, 0.92),
+      metal,
+    );
+    swingarm.position.set(side * 0.22, 0.5, 0.45);
+    swingarm.rotation.x = -0.06;
+    group.add(swingarm);
+  }
+
   for (const x of [-0.28, 0.28]) {
     const fork = new THREE.Mesh(
       new THREE.CylinderGeometry(0.025, 0.035, 0.88, 8),
@@ -792,31 +899,67 @@ function createBike(): THREE.Group {
   tailLight.position.set(0, 0.94, 1.08);
   group.add(tailLight);
 
-  const riderMaterial = new THREE.MeshPhysicalMaterial({
+  const riderMaterial = new THREE.MeshStandardMaterial({
     color: 0x111722,
     roughness: 0.42,
     metalness: 0.35,
-    clearcoat: 0.55,
   });
+  const suitAccent = new THREE.MeshStandardMaterial({
+    color: 0xe8edf7,
+    roughness: 0.38,
+    metalness: 0.22,
+  });
+  const riderRig = new THREE.Group();
+  riderRig.position.set(0, 1.22, 0.08);
+
   const rider = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.24, 0.62, 5, 10),
+    new THREE.CapsuleGeometry(0.25, 0.64, 5, 10),
     riderMaterial,
   );
-  rider.rotation.x = -0.44;
-  rider.position.set(0, 1.38, 0.1);
-  group.add(rider);
+  rider.rotation.x = -0.47;
+  rider.position.set(0, 0.18, -0.04);
+  riderRig.add(rider);
 
-  const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.27, 18, 12), body);
-  helmet.position.set(0, 1.84, -0.24);
-  group.add(helmet);
+  const backPanel = new THREE.Mesh(
+    new THREE.BoxGeometry(0.34, 0.45, 0.08),
+    suitAccent,
+  );
+  backPanel.position.set(0, 0.26, 0.2);
+  backPanel.rotation.x = -0.45;
+  riderRig.add(backPanel);
+
+  const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.28, 20, 14), body);
+  helmet.position.set(0, 0.66, -0.34);
+  riderRig.add(helmet);
   const visor = new THREE.Mesh(
-    new THREE.SphereGeometry(0.22, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+    new THREE.SphereGeometry(0.23, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2),
     glass,
   );
-  visor.scale.set(0.9, 0.66, 0.62);
-  visor.rotation.x = -0.52;
-  visor.position.set(0, 1.83, -0.43);
-  group.add(visor);
+  visor.scale.set(0.92, 0.66, 0.64);
+  visor.rotation.x = -0.55;
+  visor.position.set(0, 0.65, -0.54);
+  riderRig.add(visor);
+
+  for (const side of [-1, 1]) {
+    const arm = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.065, 0.45, 4, 8),
+      suitAccent,
+    );
+    arm.position.set(side * 0.25, 0.24, -0.3);
+    arm.rotation.x = 0.94;
+    arm.rotation.z = side * 0.2;
+    riderRig.add(arm);
+
+    const leg = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.085, 0.5, 4, 8),
+      riderMaterial,
+    );
+    leg.position.set(side * 0.23, -0.2, 0.28);
+    leg.rotation.x = -0.7;
+    leg.rotation.z = side * 0.18;
+    riderRig.add(leg);
+  }
+  group.add(riderRig);
 
   group.traverse((object) => {
     if (object instanceof THREE.Mesh) {
@@ -825,29 +968,28 @@ function createBike(): THREE.Group {
     }
   });
   group.userData.wheels = wheels;
+  group.userData.riderRig = riderRig;
+  group.userData.handlebar = handlebar;
   return group;
 }
 
 function createVehicle(index: number, truck: boolean): THREE.Group {
   const group = new THREE.Group();
   const palette = [0x1797e8, 0xe83658, 0xf4a62f, 0x8465ef, 0xdce5ef];
-  const body = new THREE.MeshPhysicalMaterial({
+  const body = new THREE.MeshStandardMaterial({
     color: palette[index % palette.length],
     roughness: 0.22,
     metalness: 0.62,
-    clearcoat: 0.85,
-    clearcoatRoughness: 0.2,
   });
   const dark = new THREE.MeshStandardMaterial({
     color: 0x0a0e16,
     roughness: 0.72,
     metalness: 0.45,
   });
-  const glass = new THREE.MeshPhysicalMaterial({
+  const glass = new THREE.MeshStandardMaterial({
     color: 0x10263e,
     roughness: 0.08,
     metalness: 0.28,
-    clearcoat: 1,
   });
 
   const lower = new THREE.Mesh(
@@ -871,6 +1013,24 @@ function createVehicle(index: number, truck: boolean): THREE.Group {
   );
   cabin.position.set(0, truck ? 1.95 : 1.05, truck ? 2.15 : -0.1);
   group.add(cabin);
+
+  if (!truck) {
+    const hood = new THREE.Mesh(
+      new THREE.BoxGeometry(1.58, 0.24, 1.05),
+      body,
+    );
+    hood.position.set(0, 0.83, -1.32);
+    hood.rotation.x = -0.05;
+    group.add(hood);
+
+    const boot = new THREE.Mesh(
+      new THREE.BoxGeometry(1.55, 0.24, 0.72),
+      body,
+    );
+    boot.position.set(0, 0.82, 1.48);
+    boot.rotation.x = 0.04;
+    group.add(boot);
+  }
 
   if (truck) {
     const grille = new THREE.Mesh(
@@ -906,6 +1066,14 @@ function createVehicle(index: number, truck: boolean): THREE.Group {
     emissive: 0x8be9ff,
     emissiveIntensity: 6,
   });
+  const headBeams: THREE.Object3D[] = [];
+  const beamMaterial = new THREE.MeshBasicMaterial({
+    color: 0x9cecff,
+    transparent: true,
+    opacity: 0.1,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
   for (const x of [-0.55, 0.55]) {
     const tail = new THREE.Mesh(
       new THREE.BoxGeometry(0.32, 0.15, 0.08),
@@ -928,6 +1096,22 @@ function createVehicle(index: number, truck: boolean): THREE.Group {
       truck ? -3.12 : -1.88,
     );
     group.add(head);
+
+    const beamLength = truck ? 8 : 7;
+    const headZ = truck ? -3.12 : -1.88;
+    const beam = new THREE.Mesh(
+      new THREE.ConeGeometry(truck ? 0.75 : 0.58, beamLength, 10, 1, true),
+      beamMaterial,
+    );
+    beam.rotation.x = Math.PI / 2;
+    beam.position.set(
+      x * (truck ? 0.66 : 0.5),
+      truck ? 1.05 : 0.68,
+      headZ - beamLength / 2,
+    );
+    beam.visible = false;
+    headBeams.push(beam);
+    group.add(beam);
   }
 
   group.traverse((object) => {
@@ -937,7 +1121,44 @@ function createVehicle(index: number, truck: boolean): THREE.Group {
     }
   });
   group.userData.wheels = wheels;
+  group.userData.headBeams = headBeams;
   return group;
+}
+
+function createPine(
+  trunkMaterial: THREE.Material,
+  foliageMaterial: THREE.Material,
+): THREE.Group {
+  const tree = new THREE.Group();
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.11, 0.16, 1.5, 7),
+    trunkMaterial,
+  );
+  trunk.position.y = 0.72;
+  tree.add(trunk);
+  for (let tier = 0; tier < 3; tier += 1) {
+    const crown = new THREE.Mesh(
+      new THREE.ConeGeometry(1.05 - tier * 0.18, 2.1, 8),
+      foliageMaterial,
+    );
+    crown.position.y = 1.55 + tier * 0.72;
+    tree.add(crown);
+  }
+  tree.traverse((object) => {
+    if (object instanceof THREE.Mesh) {
+      object.castShadow = true;
+      object.receiveShadow = true;
+    }
+  });
+  return tree;
+}
+
+function createRock(material: THREE.Material): THREE.Mesh {
+  const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.8, 0), material);
+  rock.rotation.set(0.18, 0.42, -0.12);
+  rock.castShadow = true;
+  rock.receiveShadow = true;
+  return rock;
 }
 
 function createFinishGate(): THREE.Group {
@@ -969,6 +1190,35 @@ function createFinishGate(): THREE.Group {
     gate.add(arch);
   }
   return gate;
+}
+
+function createHorizon(): THREE.Group {
+  const horizon = new THREE.Group();
+  const nearMaterial = new THREE.MeshStandardMaterial({
+    color: 0x172942,
+    emissive: 0x081221,
+    emissiveIntensity: 0.7,
+    roughness: 0.96,
+  });
+  const farMaterial = new THREE.MeshStandardMaterial({
+    color: 0x26324d,
+    emissive: 0x0c1121,
+    emissiveIntensity: 0.55,
+    roughness: 1,
+  });
+  for (let index = 0; index < 12; index += 1) {
+    const side = index % 2 === 0 ? -1 : 1;
+    const distance = 30 + (index % 6) * 14;
+    const mountain = new THREE.Mesh(
+      new THREE.ConeGeometry(9 + (index % 4) * 3, 16 + (index % 5) * 5, 6),
+      index % 3 === 0 ? farMaterial : nearMaterial,
+    );
+    mountain.position.set(side * (22 + (index % 5) * 11), 5, -75 - distance);
+    mountain.rotation.y = index * 0.63;
+    mountain.scale.z = 0.65 + (index % 3) * 0.2;
+    horizon.add(mountain);
+  }
+  return horizon;
 }
 
 function createStars(): THREE.Points {

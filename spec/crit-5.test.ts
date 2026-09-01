@@ -4,16 +4,10 @@ import { JSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
 import { crashRun, initialRun } from "../game/rules.ts";
 
-// Crit 5, "A game" --- contract tests for this week's published spec
-// (https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/crits/05-game/).
-// Runs against the BUILT site, same as spec/invariants.test.ts. The spec lines
-// judged by a person at the crit (five-minute pickup, the playtesting-derived
-// change, how the work was directed) aren't testable and aren't attempted here.
 const DIST = resolve("dist");
 const home = new JSDOM(readFileSync(resolve(DIST, "index.html"), "utf8")).window
   .document;
 const mainSource = readFileSync(resolve("main.ts"), "utf8");
-const cameraSource = readFileSync(resolve("game/camera.ts"), "utf8");
 
 describe("crit 5: no instructions anywhere", () => {
   const TUTORIAL_WORDS = /how to play|instructions|tutorial|click here to start/i;
@@ -21,7 +15,7 @@ describe("crit 5: no instructions anywhere", () => {
   it("has no on-screen tutorial or how-to-play text", () => {
     expect(
       home.body.textContent ?? "",
-      "the opening screen has to make the first move obvious on its own --- no explanatory text standing in for it",
+      "the opening screen has to make the first move obvious on its own",
     ).not.toMatch(TUTORIAL_WORDS);
   });
 
@@ -33,16 +27,9 @@ describe("crit 5: no instructions anywhere", () => {
 });
 
 describe("crit 5: the game can be lost", () => {
-  // Contract, not implementation: the game root reports its own state so a
-  // test (or a tutor) can tell playing from ended without reading the source.
-  // Swap the selector/values below if your game's convention differs, but keep
-  // some state that is queryable rather than only inferrable from the DOM.
   it("exposes a game-state hook that starts in play", () => {
     const root = home.querySelector("[data-game-state]");
-    expect(
-      root,
-      "add data-game-state to the game's root element, starting at \"playing\"",
-    ).toBeTruthy();
+    expect(root).toBeTruthy();
     expect(root?.getAttribute("data-game-state")).toBe("playing");
   });
 
@@ -51,15 +38,20 @@ describe("crit 5: the game can be lost", () => {
   });
 });
 
-describe("HANDSHIFT: camera-first control", () => {
-  it("keeps palm tracking optional behind its camera control", () => {
-    expect(mainSource.match(/void palmCamera\.start\(\);/g)).toHaveLength(1);
-    expect(mainSource).toContain('cameraButton.addEventListener("click"');
-    expect(home.querySelector("#camera")).toBeTruthy();
+describe("HANDSHIFT: resilient controls", () => {
+  it("provides pause and resume without adding another terminal game state", () => {
+    expect(home.querySelector("#pause")).toBeTruthy();
+    expect(mainSource).toContain("const deltaSeconds = paused ? 0 : frameDelta");
+    expect(mainSource).toContain('root.dataset.paused = String(paused)');
   });
 
-  it("uses MediaPipe's live video API rather than worker image transfers", () => {
-    expect(cameraSource).toContain("detectForVideo");
-    expect(cameraSource).not.toContain("new Worker");
+  it("shows speed directly instead of an unexplained starting multiplier", () => {
+    expect(home.querySelector("#speedometer #speed")).toBeTruthy();
+    expect(home.querySelector("#multiplier")).toBeFalsy();
+  });
+
+  it("ships only keyboard and pointer steering", () => {
+    expect(home.querySelector("#camera, #camera-preview, #hand-trace")).toBeFalsy();
+    expect(mainSource).not.toMatch(/PalmCamera|cameraButton|palmCamera/);
   });
 });

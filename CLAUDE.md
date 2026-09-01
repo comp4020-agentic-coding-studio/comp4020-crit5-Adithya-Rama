@@ -36,31 +36,31 @@ crit, not by a test.
 ## Product charter --- HANDSHIFT
 
 HANDSHIFT is a premium-feeling browser arcade ride built around continuous
-lateral steering. Keyboard and pointer are the primary controls; optional palm
-roll maps to the same steering signal. Close non-colliding passes build score
-and multiplier; a collision ends the run; surviving 210 seconds reaches a finish.
+lateral steering through keyboard and pointer/touch. Close non-colliding passes
+build score and multiplier; speed rises automatically; a collision ends the
+run; surviving 210 seconds reaches a finish.
 
 The opening is already live. A motorcycle idles on a sparse sunset highway, a
 handlebar-motion glyph invites interaction, and the bike mirrors the first useful
 steering signal before traffic becomes dangerous. Do not explain this with
 words. The title, score, multiplier, time, reward words, and icon-only
-camera/audio/restart controls are allowed; how-to copy is not.
+pause/audio/restart controls are allowed; how-to copy is not.
 
 ### Runtime and architecture
 
 - Keep Vite + strict TypeScript and deploy as static GitHub Pages output.
 - Use Three.js for a procedural low/mid-poly road, bike, traffic and effects.
-- Lazy-load MediaPipe Hand Landmarker only after camera activation. Its WASM
-  and model are local assets, not CDN URLs.
-- Normalise keyboard, pointer/touch and camera into the same timestamped
-  steering sample. A held key wins, then a recent pointer gesture, then a fresh
-  camera sample; camera loss recentres smoothly without affecting primary play.
+- Normalise keyboard and pointer/touch into the same timestamped steering
+  sample. A held key wins over pointer movement; UI button clicks must never
+  start or steer the motorcycle.
 - Keep rules pure: seeded traffic, collision, near-miss classification,
   multiplier and the 210-second finish must not depend on Three.js.
 - Treat `playing`, `crashed` and `finished` as the public run-state contract
   and mirror it on the game root through `data-game-state`.
-- Synthesize sound with Web Audio after a user gesture. Do not add downloaded
-  audio or autoplay assumptions.
+- Bundle the CC0 Suzuki GSX1300 Hayabusa recording locally and shape it with
+  Web Audio after a user gesture. Loop crossfades, pitch, filtering and
+  loudness follow automatic speed; synthesized wind adds speed without
+  replacing the engine note, and pause/resume ramps audio without clicks.
 
 ### Visual and performance budget
 
@@ -70,16 +70,15 @@ camera/audio/restart controls are allowed; how-to copy is not.
 - Generated skyline/card raster assets must be inspected, copied into
   `public/`, optimised, and recorded with their final prompts. Simple particles
   and icons stay code-native.
-- Cap device pixel ratio, pool road/traffic objects, sample hand tracking below
-  render frequency, and degrade expensive effects before frame rate falls
-  below 30 FPS.
-- Initial pointer/keyboard play must work before the camera module or model has
-  loaded, and a denied camera must never strand the player.
+- Cap device pixel ratio, pool road/traffic objects, prefer efficient standard
+  materials, and degrade scenery/effects before frame rate falls below 30 FPS.
+- Keyboard and pointer/touch must be immediately playable; do not reintroduce
+  camera inference or a heavyweight input runtime.
 
 ### Acceptance gates
 
 1. Pure rule tests prove collision, one-shot near-miss scoring, steering
-   calibration/clamping and the timed finish.
+   response and the timed finish.
 2. `pnpm check`, the Crit 5 spec and invariants pass against the built output.
 3. The running game is exercised at 1920x1080 and 390x844, including keyboard,
    pointer/touch fallback, resize during play, crash, restart and finish.

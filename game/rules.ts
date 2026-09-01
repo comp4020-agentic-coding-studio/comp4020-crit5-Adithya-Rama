@@ -13,6 +13,9 @@ export interface DifficultyProfile {
   truckChance: number;
   trafficCruiseMin: number;
   trafficCruiseMax: number;
+  oncomingChance: number;
+  oncomingSpeedMin: number;
+  oncomingSpeedMax: number;
 }
 
 export type PassOutcome = "collision" | "near-miss" | "none";
@@ -24,6 +27,21 @@ export function boxesOverlap(a: HitBox, b: HitBox): boolean {
   );
 }
 
+export function boxesOverlapDuringStep(
+  player: HitBox,
+  vehicle: HitBox,
+  previousVehicleZ: number,
+): boolean {
+  const travel = Math.abs(vehicle.z - previousVehicleZ);
+  if (travel === 0) return boxesOverlap(player, vehicle);
+  const sweptVehicle = {
+    ...vehicle,
+    z: (previousVehicleZ + vehicle.z) / 2,
+    length: vehicle.length + travel,
+  };
+  return boxesOverlap(player, sweptVehicle);
+}
+
 export function lateralClearance(a: HitBox, b: HitBox): number {
   return Math.abs(a.x - b.x) - (a.width + b.width) / 2;
 }
@@ -33,8 +51,10 @@ export function classifyPass(
   vehicle: HitBox,
   hasPassed: boolean,
   alreadyScored: boolean,
+  previousVehicleZ = vehicle.z,
 ): PassOutcome {
-  if (boxesOverlap(player, vehicle)) return "collision";
+  if (boxesOverlapDuringStep(player, vehicle, previousVehicleZ))
+    return "collision";
   const clearance = lateralClearance(player, vehicle);
   if (
     hasPassed &&
@@ -52,15 +72,23 @@ export function difficultyAt(elapsedSeconds: number): DifficultyProfile {
     0,
     Math.min(1, elapsedSeconds / RUN_DURATION_SECONDS),
   );
-  const eased = progress * progress * (3 - 2 * progress);
+  // A sub-linear curve makes the acceleration obvious early, then keeps
+  // building pressure throughout the whole run without a sudden final spike.
+  const eased = Math.pow(progress, 0.72);
   return {
     progress,
-    worldSpeed: 25 + eased * 23,
-    spawnInterval: 2.7 - eased * 1.72,
+    worldSpeed: 28 + eased * 24,
+    spawnInterval: 2.65 - eased * 1.67,
     burstChance: 0.08 + eased * 0.62,
     truckChance: 0.04 + eased * 0.31,
     trafficCruiseMin: 10 + eased * 3,
     trafficCruiseMax: 20 + eased * 5,
+    oncomingChance:
+      progress < 0.22
+        ? 0
+        : Math.pow((progress - 0.22) / 0.78, 1.15) * 0.48,
+    oncomingSpeedMin: 20 + eased * 7,
+    oncomingSpeedMax: 29 + eased * 11,
   };
 }
 

@@ -1,11 +1,8 @@
+import { shapeSteeringInput } from "./steering.ts";
 import type { SteeringSample } from "./types.ts";
-
-const ACTIVE_CAMERA_MS = 420;
-const ACTIVE_POINTER_MS = 1500;
 
 export class InputController {
   private keyboard = new Set<string>();
-  private cameraSample: SteeringSample | null = null;
   private pointerSample: SteeringSample = {
     value: 0,
     confidence: 1,
@@ -26,11 +23,6 @@ export class InputController {
     window.addEventListener("blur", this.onBlur);
   }
 
-  setCameraSample(sample: SteeringSample): void {
-    this.cameraSample = sample;
-    if (Math.abs(sample.value) > 0.08) this.onActivity();
-  }
-
   sample(now: number): SteeringSample {
     const keyboardValue =
       (this.keyboard.has("ArrowRight") || this.keyboard.has("KeyD") ? 1 : 0) -
@@ -44,19 +36,6 @@ export class InputController {
         source: "keyboard",
       };
     }
-
-    if (now - this.pointerSample.timestamp <= ACTIVE_POINTER_MS) {
-      return this.pointerSample;
-    }
-
-    if (
-      this.cameraSample &&
-      now - this.cameraSample.timestamp <= ACTIVE_CAMERA_MS &&
-      this.cameraSample.confidence >= 0.45
-    ) {
-      return this.cameraSample;
-    }
-
     return this.pointerSample;
   }
 
@@ -71,6 +50,7 @@ export class InputController {
   }
 
   private readonly onPointer = (event: PointerEvent): void => {
+    if (event.target instanceof Element && event.target.closest("button")) return;
     if (event.type === "pointerdown") {
       this.target.setPointerCapture(event.pointerId);
     }
@@ -78,7 +58,7 @@ export class InputController {
     const bounds = this.target.getBoundingClientRect();
     const value = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
     this.pointerSample = {
-      value: Math.max(-1, Math.min(1, value)),
+      value: shapeSteeringInput(value),
       confidence: 1,
       timestamp: performance.now(),
       source: "pointer",
@@ -89,6 +69,14 @@ export class InputController {
   private readonly onPointerUp = (event: PointerEvent): void => {
     if (this.target.hasPointerCapture(event.pointerId)) {
       this.target.releasePointerCapture(event.pointerId);
+    }
+    if (event.pointerType !== "mouse") {
+      this.pointerSample = {
+        value: 0,
+        confidence: 1,
+        timestamp: performance.now(),
+        source: "pointer",
+      };
     }
   };
 
@@ -105,5 +93,11 @@ export class InputController {
 
   private readonly onBlur = (): void => {
     this.keyboard.clear();
+    this.pointerSample = {
+      value: 0,
+      confidence: 1,
+      timestamp: performance.now(),
+      source: "pointer",
+    };
   };
 }

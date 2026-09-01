@@ -59,29 +59,31 @@ Before any commit that claims a milestone, and always before invoking rule 10
 
 ## 0.1 HANDSHIFT product contract
 
-The chosen response is **HANDSHIFT**, a keyboard-and-pointer-first 3D motorcycle
-game with optional hand tracking. Keep the response pointed and small even when
-polishing it:
+The chosen response is **HANDSHIFT**, a keyboard-and-pointer-controlled 3D
+motorcycle game. Keep the response pointed and small even when polishing it:
 
-* one continuous lateral steering mechanic is driven primarily by keyboard or
-  pointer/touch, with optional palm roll using the same normalized signal;
-* keyboard and pointer/touch remain immediately playable whether camera
-  permission, lighting or tracking succeeds or fails;
-* a run ends in a crash or at the illuminated finish after 210 seconds;
+* one continuous lateral steering mechanic is driven by keyboard or
+  pointer/touch through the same normalized signal;
+* do not add camera or hand-tracking input; spend the runtime and interaction
+  budget on responsive riding, traffic readability and visual depth;
+* speed increases automatically through a deterministic difficulty curve; a
+  run ends in a crash or at the illuminated finish after 210 seconds;
+* an icon-only pause/resume control freezes time, traffic, rendering motion and
+  speed-responsive audio without creating a fourth terminal game state;
 * the root exposes `data-game-state="playing|crashed|finished"` and keeps it in
   sync with the real run state;
 * there is no instructional copy, tutorial screen, help dialog, or README
   control guide --- affordance and feedback do the teaching;
-* Three.js, MediaPipe WASM/model files, generated artwork and other runtime
-  assets ship locally. Do not add a runtime CDN dependency;
+* Three.js, generated artwork and other runtime assets ship locally. Do not
+  add a runtime CDN dependency;
 * game rules stay deterministic and separate from rendering so collision,
-  scoring and finishing can be tested without WebGL or a camera;
+  scoring and finishing can be tested without WebGL;
 * target 60 FPS on the desktop marking viewport and at least 30 FPS on the
   phone viewport, with adaptive quality rather than broken play;
-* never report webcam quality, visual polish, audio feel or mobile play as
+* never report visual polish, audio feel, performance or mobile play as
   verified unless that exact check was performed on the running build.
 
-Reject an endless-only run, a camera-only build, or extra mechanics that put a
+Reject an endless-only run or extra mechanics that put a
 spec line or the core steering feel at risk. The feature-complete build must
 pause for a real student playthrough; its observed correction and the student's
 approved reflection are pre-publication gates, not details to invent.

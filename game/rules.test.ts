@@ -3,6 +3,7 @@ import {
   RUN_DURATION_SECONDS,
   advanceRun,
   applyNearMiss,
+  boxesOverlapDuringStep,
   classifyPass,
   crashRun,
   difficultyAt,
@@ -29,16 +30,32 @@ describe("HANDSHIFT rules", () => {
     expect(rewarded.multiplier).toBe(1.5);
   });
 
+  it("detects an oncoming collision swept between rendered frames", () => {
+    const oncoming = { x: 0.1, z: 2.4, width: 1.7, length: 3.7 };
+    expect(boxesOverlapDuringStep(player, oncoming, -3.1)).toBe(true);
+    expect(classifyPass(player, oncoming, false, false, -3.1)).toBe(
+      "collision",
+    );
+
+    const safeOncoming = { ...oncoming, x: 2.1 };
+    expect(boxesOverlapDuringStep(player, safeOncoming, -3.1)).toBe(false);
+  });
+
   it("increases speed, traffic frequency and truck pressure over time", () => {
     const opening = difficultyAt(0);
+    const early = difficultyAt(20);
     const middle = difficultyAt(RUN_DURATION_SECONDS / 2);
     const finale = difficultyAt(RUN_DURATION_SECONDS);
 
+    expect(early.worldSpeed).toBeGreaterThan(opening.worldSpeed * 1.1);
     expect(middle.worldSpeed).toBeGreaterThan(opening.worldSpeed);
     expect(finale.worldSpeed).toBeGreaterThan(middle.worldSpeed);
     expect(middle.spawnInterval).toBeLessThan(opening.spawnInterval);
     expect(finale.spawnInterval).toBeLessThan(middle.spawnInterval);
     expect(finale.truckChance).toBeGreaterThan(opening.truckChance);
+    expect(opening.oncomingChance).toBe(0);
+    expect(middle.oncomingChance).toBeGreaterThan(0);
+    expect(finale.oncomingChance).toBeGreaterThan(middle.oncomingChance);
   });
 
   it("finishes a surviving run at 210 seconds", () => {
