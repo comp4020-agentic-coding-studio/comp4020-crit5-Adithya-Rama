@@ -5,8 +5,8 @@
 I built HANDSHIFT, a browser-based 3D motorcycle game in which the player
 weaves through progressively denser highway traffic, builds a multiplier from
 close passes, and either crashes or reaches an illuminated finish. Keyboard and
-pointer steering are now primary; palm tracking remains an optional version of
-the same continuous steering mechanic.
+pointer/touch are the only controls, feeding the same continuous steering
+mechanic while speed rises automatically.
 
 ## The moments that mattered
 
@@ -23,16 +23,19 @@ Three.js highway, motorcycle and traffic were built. This made later tuning
 safer because graphical changes could not silently redefine the game. See
 [`6f6a759...df66b54`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit5-Adithya-Rama/compare/6f6a759...df66b54).
 
-The decisive correction came from actual use, not code inspection:
+The decisive corrections came from actual use, not code inspection:
 
 > “no its not tracking my hand at all”
 
-I replaced the non-working hand pipeline with MediaPipe video inference and
-local GPU/CPU fallback. After the camera worked, the next play feedback was that
-it was still imprecise. I therefore made keyboard and pointer primary, retained
-camera as optional, added steadier palm calibration, extended the run to 210
-seconds, and coordinated speed, traffic, trucks and visual progression through
-one difficulty curve. The confirmed camera correction is
-[`79a66df`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit5-Adithya-Rama/commit/79a66df);
-the later play-derived polish remains pending final visual playtest and its own
-commit.
+I replaced the non-working hand pipeline with MediaPipe video inference. The
+confirmed correction is
+[`79a66df`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit5-Adithya-Rama/commit/79a66df).
+Further play showed that even working tracking was imprecise, inconvenient to
+toggle and contributed to a laggy build. I first made keyboard and pointer
+primary, then removed MediaPipe, its model and camera UI entirely. I redirected
+that budget into automatic speed, efficient vehicle shapes, rider animation and
+progressive traffic. Later play exposed fan-like engine loops, abrupt controls and a flat late-game
+threat. I bundled a CC0 Hayabusa recording, introduced headlight-signalled
+oncoming vehicles with swept collision checks, then added centre-weighted
+steering, gentler traction and crossfaded engine layers. The approved correction is recorded in
+[`d515f3b`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit5-Adithya-Rama/commit/d515f3b).
